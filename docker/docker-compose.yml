@@ -1,0 +1,18 @@
+name: gocli
+services:
+  go:
+    container_name: go
+    build:
+      context: ./go
+      dockerfile: Dockerfile
+    volumes:
+      - type: bind
+        source: ../
+        target: /app
+      - type: volume
+        source: codex-data
+        target: /root/.codex
+    tty: true
+
+volumes:
+  codex-data:
