@@ -1,6 +1,6 @@
 package input
 
-// Input contains the values required by the login workflow.
+// 読んで字のごとく
 type Input struct {
 	Email     string
 	Password  string

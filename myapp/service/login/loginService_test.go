@@ -1,71 +1,45 @@
 package login
 
 import (
+	rootrepository "aiagentcliapp/repository"
+	repositorylogin "aiagentcliapp/repository/login"
+	loginrequest "aiagentcliapp/repository/login/request"
 	"aiagentcliapp/service/login/input"
 	"context"
-	"errors"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"testing"
-	"time"
 )
 
-type fakeTokenIssuer struct {
-	email       string
-	password    string
-	tokenName   string
-	accessToken string
-	tokenType   string
-	expiresAt   time.Time
-	err         error
-}
-
-func (fake *fakeTokenIssuer) Issue(
-	_ context.Context,
-	email string,
-	password string,
-	tokenName string,
-) (string, string, time.Time, error) {
-	fake.email = email
-	fake.password = password
-	fake.tokenName = tokenName
-
-	return fake.accessToken, fake.tokenType, fake.expiresAt, fake.err
-}
-
 func TestLogin(t *testing.T) {
-	expiresAt := time.Date(2026, time.July, 20, 12, 0, 0, 0, time.UTC)
-	issuer := &fakeTokenIssuer{
-		accessToken: "1|secret-token",
-		tokenType:   "Bearer",
-		expiresAt:   expiresAt,
-	}
-	service := NewService(issuer)
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		var actual loginrequest.Request
+		if err := json.NewDecoder(request.Body).Decode(&actual); err != nil {
+			t.Fatalf("decode request: %v", err)
+		}
+		if actual.Email != "user@example.com" || actual.Password != "password" || actual.TokenName != "agent-cli" {
+			t.Fatalf("request = %#v", actual)
+		}
+
+		writer.Header().Set("Content-Type", "application/json")
+		_, _ = writer.Write([]byte(`{
+			"access_token": "1|secret-token",
+			"token_type": "Bearer",
+			"expires_at": "2026-07-20T12:00:00+00:00"
+		}`))
+	}))
+	defer server.Close()
+
+	client := rootrepository.NewClient(server.URL, server.Client())
+	service := NewService(repositorylogin.NewRepository(client))
 	loginInput := input.Input{
 		Email:     "user@example.com",
 		Password:  "password",
 		TokenName: "agent-cli",
 	}
 
-	actual, err := service.Login(context.Background(), loginInput)
-	if err != nil {
+	if err := service.Login(context.Background(), loginInput); err != nil {
 		t.Fatalf("Login() error = %v", err)
-	}
-	if actual.AccessToken != issuer.accessToken || actual.TokenType != issuer.tokenType {
-		t.Fatalf("Login() = %#v", actual)
-	}
-	if !actual.ExpiresAt.Equal(expiresAt) {
-		t.Fatalf("Login() expiry = %v, want %v", actual.ExpiresAt, expiresAt)
-	}
-	if issuer.email != loginInput.Email || issuer.password != loginInput.Password || issuer.tokenName != loginInput.TokenName {
-		t.Fatalf("Issue() input = %q, %q, %q", issuer.email, issuer.password, issuer.tokenName)
-	}
-}
-
-func TestLoginWrapsIssuerError(t *testing.T) {
-	issuerError := errors.New("request failed")
-	service := NewService(&fakeTokenIssuer{err: issuerError})
-
-	_, err := service.Login(context.Background(), input.Input{})
-	if !errors.Is(err, issuerError) {
-		t.Fatalf("Login() error = %v, want wrapped issuer error", err)
 	}
 }
