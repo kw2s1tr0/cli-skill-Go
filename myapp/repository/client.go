@@ -29,6 +29,7 @@ func NewClient(
 	}
 }
 
+// API呼び出し共通関数
 func (client *Client) DoJSON(
 	ctx context.Context,
 	method string,

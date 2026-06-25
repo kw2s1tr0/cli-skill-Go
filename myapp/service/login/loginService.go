@@ -22,6 +22,7 @@ func (service *Service) Login(
 	ctx context.Context,
 	loginInput input.Input,
 ) error {
+
 	loginRequest := requestbuilder.NewBuilder().Build(
 		loginInput.Email,
 		loginInput.Password,

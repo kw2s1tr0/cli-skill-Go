@@ -22,6 +22,7 @@ func main() {
 	// Controllerで引数ごとにserviceを呼び出し、結果をintで返す
 	os.Exit(
 		controller.Run(
+			// 最初は起動commandのため除外する
 			os.Args[1:],
 			client,
 			context.Background(),

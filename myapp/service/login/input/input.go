@@ -1,6 +1,6 @@
 package input
 
-// 読んで字のごとく
+// InputはCLIから受け取ったログイン情報をServiceへ渡すための型。
 type Input struct {
 	Email     string
 	Password  string
