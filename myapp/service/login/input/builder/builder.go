@@ -7,8 +7,14 @@ import (
 	"strings"
 )
 
-// command以下の引数を渡してserviceの引数に変換する
-func Build(args []string) (input.Input, error) {
+type Builder struct{}
+
+func NewBuilder() *Builder {
+	return &Builder{}
+}
+
+// command以下の引数と入力されたパスワードをserviceの引数に変換する
+func (builder *Builder) Build(args []string, password string) (input.Input, error) {
 	// Go標準のCLIの引数解析ツール
 	// 命名とエラー時に処理を停めないようにしている
 	flags := flag.NewFlagSet("login", flag.ContinueOnError)
@@ -19,7 +25,6 @@ func Build(args []string) (input.Input, error) {
 
 	// 引数を定義
 	email := flags.String("email", "", "login email address")
-	password := flags.String("password", "", "login password")
 	tokenName := flags.String("token-name", "", "API token name")
 
 	// 引数を検証
@@ -32,7 +37,7 @@ func Build(args []string) (input.Input, error) {
 
 	return input.Input{
 		Email:     resolvedEmail,
-		Password:  *password,
+		Password:  password,
 		TokenName: resolvedTokenName,
 	}, nil
 }

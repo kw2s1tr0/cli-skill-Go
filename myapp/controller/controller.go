@@ -2,9 +2,14 @@ package controller
 
 import (
 	"aiagentcliapp/repository"
+	repositorylogin "aiagentcliapp/repository/login"
+	repositorytokenstore "aiagentcliapp/repository/tokenstore"
+	servicelogin "aiagentcliapp/service/login"
+	inputbuilder "aiagentcliapp/service/login/input/builder"
 	"context"
 	"fmt"
 	"io"
+	"os"
 )
 
 const (
@@ -14,11 +19,24 @@ const (
 	ExitUsage   = 2
 )
 
+// io.Writerのような型が無いため独自の関数の型をつくる
+type PasswordReader func(fd int) ([]byte, error)
+
+type accessTokenStore interface {
+	SaveAccessToken(context.Context, string) error
+}
+
+var newTokenStoreRepository = func() accessTokenStore {
+	return repositorytokenstore.NewRepository()
+}
+
 func Run(
 	args []string,
 	client *repository.Client,
 	ctx context.Context,
+	stdin *os.File,
 	stdout, stderr io.Writer,
+	passwordReader PasswordReader,
 ) int {
 	// サブコマンドが無い場合は使い方の誤りとして扱い、使用方法をstderrへ出す。
 	if len(args) == 0 {
@@ -35,17 +53,51 @@ func Run(
 
 	// Controllerはコマンド名を判定し、実際の業務処理はServiceへ委譲する。
 	switch cmd {
+
 	case "help", "-h", "--help":
 		printHelp(stdout)
 		return ExitOK
+
 	case "login":
+		// login入力を非表示で行う
+		fmt.Fprint(stderr, "Password: ")
+		password, err := passwordReader(int(stdin.Fd()))
+		// 改行
+		fmt.Fprintln(stderr)
+		if err != nil {
+			runtimeErr = fmt.Errorf("read password: %w", err)
+			break
+		}
+
+		loginInput, err := inputbuilder.NewBuilder().Build(args[1:], string(password))
+		if err != nil {
+			validationErr = err
+			break
+		}
+
+		// テスト容易性のためDIする
+		loginRepository := repositorylogin.NewRepository(client)
+		tokenStoreRepository := newTokenStoreRepository()
+		loginService := servicelogin.NewService(loginRepository, tokenStoreRepository)
+
+		runtimeErr = loginService.Login(ctx, loginInput)
+		if runtimeErr == nil {
+			fmt.Fprintln(stdout, "login succeeded")
+		}
+
 	case "me":
+
 	case "logout":
+
 	case "departments":
+
 	case "employees":
+
 	case "positions":
+
 	default:
-		printUnknownCommand(stderr, cmd)
+		// 想定外commandの場合はエラー出力
+		fmt.Fprintf(stderr, "error: unknown command %q\n\n", cmd)
 		printUsage(stderr)
 		return ExitUsage
 	}
@@ -68,7 +120,7 @@ func Run(
 // printUsageは、入力が足りない・間違っている場合に最低限の使い方を表示する。
 func printUsage(writer io.Writer) {
 	fmt.Fprintln(writer, `Usage:
-	login [--json]
+	login [--email EMAIL] [--token-name NAME]
 	me [--json]
 	logout
 	departments
@@ -86,11 +138,6 @@ func printHelp(writer io.Writer) {
 	departments
 	employees
 	positions`)
-}
-
-// 未対応のコマンド名はそのまま表示し、利用者が入力ミスを見つけやすくする。
-func printUnknownCommand(writer io.Writer, cmd string) {
-	fmt.Fprintf(writer, "error: unknown command %q\n\n", cmd)
 }
 
 // エラー表示を1か所にまとめ、stdoutとstderrの使い分けを崩さないようにする。

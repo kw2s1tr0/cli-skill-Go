@@ -10,11 +10,17 @@ import (
 
 type Service struct {
 	repository *repositorylogin.Repository
+	tokenStore tokenStore
 }
 
-func NewService(repository *repositorylogin.Repository) *Service {
+type tokenStore interface {
+	SaveAccessToken(context.Context, string) error
+}
+
+func NewService(repository *repositorylogin.Repository, tokenStore tokenStore) *Service {
 	return &Service{
 		repository: repository,
+		tokenStore: tokenStore,
 	}
 }
 
@@ -29,9 +35,14 @@ func (service *Service) Login(
 		loginInput.TokenName,
 	)
 
-	_, err := service.repository.Login(ctx, loginRequest)
+	loginResponse, err := service.repository.Login(ctx, loginRequest)
 	if err != nil {
 		return fmt.Errorf("login: %w", err)
+	}
+
+	// OS keystringに保存する
+	if err := service.tokenStore.SaveAccessToken(ctx, loginResponse.AccessToken); err != nil {
+		return fmt.Errorf("save access token: %w", err)
 	}
 
 	return nil

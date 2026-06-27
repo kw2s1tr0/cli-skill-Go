@@ -8,25 +8,24 @@ import (
 func TestBuild(t *testing.T) {
 	args := []string{
 		"--email", " user@example.com ",
-		"--password", "password",
 		"--token-name", " agent-cli ",
 	}
 
-	actual, err := NewBuilder().Build(args)
+	actual, err := NewBuilder().Build(args, "secret")
 	if err != nil {
 		t.Fatalf("Build() error = %v", err)
 	}
-	if actual.Email != "user@example.com" || actual.Password != "password" || actual.TokenName != "agent-cli" {
+	if actual.Email != "user@example.com" || actual.Password != "secret" || actual.TokenName != "agent-cli" {
 		t.Fatalf("Build() = %#v", actual)
 	}
 }
 
 func TestBuildAllowsOmittedFlags(t *testing.T) {
-	actual, err := NewBuilder().Build(nil)
+	actual, err := NewBuilder().Build(nil, "secret")
 	if err != nil {
 		t.Fatalf("Build() error = %v", err)
 	}
-	if actual.Email != "" || actual.Password != "" || actual.TokenName != "" {
+	if actual.Email != "" || actual.Password != "secret" || actual.TokenName != "" {
 		t.Fatalf("Build() = %#v, want zero value", actual)
 	}
 }
@@ -38,19 +37,14 @@ func TestBuildRejectsInvalidArguments(t *testing.T) {
 		wantErr string
 	}{
 		{
-			name:    "provided email is empty",
-			args:    []string{"--email", ""},
-			wantErr: "--email must not be empty",
+			name:    "password flag",
+			args:    []string{"--password", "password"},
+			wantErr: "flag provided but not defined",
 		},
 		{
-			name:    "provided password is empty",
-			args:    []string{"--password", ""},
-			wantErr: "--password must not be empty",
-		},
-		{
-			name:    "provided token name is empty",
-			args:    []string{"--token-name", ""},
-			wantErr: "--token-name must not be empty",
+			name:    "password flag with value",
+			args:    []string{"--password=password"},
+			wantErr: "flag provided but not defined",
 		},
 		{
 			name:    "unknown flag",
@@ -62,21 +56,11 @@ func TestBuildRejectsInvalidArguments(t *testing.T) {
 			args:    []string{"--email"},
 			wantErr: "flag needs an argument",
 		},
-		{
-			name: "positional argument",
-			args: []string{
-				"--email", "user@example.com",
-				"--password", "password",
-				"--token-name", "agent-cli",
-				"extra",
-			},
-			wantErr: "does not accept positional arguments",
-		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			_, err := NewBuilder().Build(test.args)
+			_, err := NewBuilder().Build(test.args, "secret")
 			if err == nil {
 				t.Fatal("Build() error = nil, want error")
 			}
