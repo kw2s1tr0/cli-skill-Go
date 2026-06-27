@@ -16,10 +16,20 @@ import (
 
 type fakeTokenStore struct {
 	accessToken string
+	deleted     bool
 }
 
 func (store *fakeTokenStore) SaveAccessToken(ctx context.Context, accessToken string) error {
 	store.accessToken = accessToken
+	return nil
+}
+
+func (store *fakeTokenStore) GetAccessToken(ctx context.Context) (string, error) {
+	return store.accessToken, nil
+}
+
+func (store *fakeTokenStore) DeleteAccessToken(ctx context.Context) error {
+	store.deleted = true
 	return nil
 }
 
@@ -144,5 +154,105 @@ func TestLoginRejectsPasswordFlagAfterReadingPassword(t *testing.T) {
 	}
 	if !strings.Contains(stderr.String(), "flag provided but not defined") {
 		t.Fatalf("stderr = %q, want password flag error", stderr.String())
+	}
+}
+
+func TestMe(t *testing.T) {
+	tokenStore := &fakeTokenStore{accessToken: "1|secret-token"}
+	originalNewTokenStoreRepository := newTokenStoreRepository
+	newTokenStoreRepository = func() accessTokenStore {
+		return tokenStore
+	}
+	defer func() {
+		newTokenStoreRepository = originalNewTokenStoreRepository
+	}()
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/api/auth/me" {
+			t.Errorf("path = %s, want /api/auth/me", request.URL.Path)
+		}
+		if authorization := request.Header.Get("Authorization"); authorization != "Bearer 1|secret-token" {
+			t.Errorf("Authorization = %q, want bearer token", authorization)
+		}
+		writer.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(writer).Encode(map[string]any{
+			"id":    123,
+			"name":  "User Name",
+			"email": "user@example.com",
+		})
+	}))
+	defer server.Close()
+
+	client := repository.NewClient(server.URL, server.Client())
+	var stdout, stderr bytes.Buffer
+	passwordReader := func(fd int) ([]byte, error) {
+		t.Fatal("ReadPassword() was called")
+		return nil, nil
+	}
+
+	code := Run(
+		[]string{"me"},
+		client,
+		context.Background(),
+		os.Stdin,
+		&stdout,
+		&stderr,
+		passwordReader,
+	)
+
+	if code != ExitOK {
+		t.Fatalf("Run() = %d, want %d; stderr = %q", code, ExitOK, stderr.String())
+	}
+	if got := stdout.String(); got != "ID: 123\nName: User Name\nEmail: user@example.com\n" {
+		t.Fatalf("stdout = %q, want user output", got)
+	}
+}
+
+func TestLogout(t *testing.T) {
+	tokenStore := &fakeTokenStore{accessToken: "1|secret-token"}
+	originalNewTokenStoreRepository := newTokenStoreRepository
+	newTokenStoreRepository = func() accessTokenStore {
+		return tokenStore
+	}
+	defer func() {
+		newTokenStoreRepository = originalNewTokenStoreRepository
+	}()
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/api/auth/logout" {
+			t.Errorf("path = %s, want /api/auth/logout", request.URL.Path)
+		}
+		if authorization := request.Header.Get("Authorization"); authorization != "Bearer 1|secret-token" {
+			t.Errorf("Authorization = %q, want bearer token", authorization)
+		}
+		writer.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+
+	client := repository.NewClient(server.URL, server.Client())
+	var stdout, stderr bytes.Buffer
+	passwordReader := func(fd int) ([]byte, error) {
+		t.Fatal("ReadPassword() was called")
+		return nil, nil
+	}
+
+	code := Run(
+		[]string{"logout"},
+		client,
+		context.Background(),
+		os.Stdin,
+		&stdout,
+		&stderr,
+		passwordReader,
+	)
+
+	if code != ExitOK {
+		t.Fatalf("Run() = %d, want %d; stderr = %q", code, ExitOK, stderr.String())
+	}
+	if !tokenStore.deleted {
+		t.Fatal("DeleteAccessToken() was not called")
+	}
+	if got := stdout.String(); got != "logout succeeded\n" {
+		t.Fatalf("stdout = %q, want logout succeeded", got)
 	}
 }

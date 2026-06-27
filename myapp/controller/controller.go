@@ -3,9 +3,13 @@ package controller
 import (
 	"aiagentcliapp/repository"
 	repositorylogin "aiagentcliapp/repository/login"
+	repositorylogout "aiagentcliapp/repository/logout"
+	repositoryme "aiagentcliapp/repository/me"
 	repositorytokenstore "aiagentcliapp/repository/tokenstore"
 	servicelogin "aiagentcliapp/service/login"
 	inputbuilder "aiagentcliapp/service/login/input/builder"
+	servicelogout "aiagentcliapp/service/logout"
+	serviceme "aiagentcliapp/service/me"
 	"context"
 	"fmt"
 	"io"
@@ -24,6 +28,8 @@ type PasswordReader func(fd int) ([]byte, error)
 
 type accessTokenStore interface {
 	SaveAccessToken(context.Context, string) error
+	GetAccessToken(context.Context) (string, error)
+	DeleteAccessToken(context.Context) error
 }
 
 var newTokenStoreRepository = func() accessTokenStore {
@@ -86,8 +92,26 @@ func Run(
 		}
 
 	case "me":
+		meRepository := repositoryme.NewRepository(client)
+		tokenStoreRepository := newTokenStoreRepository()
+		meService := serviceme.NewService(meRepository, tokenStoreRepository)
+
+		user, err := meService.Me(ctx)
+		if err != nil {
+			runtimeErr = err
+			break
+		}
+		fmt.Fprintf(stdout, "ID: %d\nName: %s\nEmail: %s\n", user.ID, user.Name, user.Email)
 
 	case "logout":
+		tokenStoreRepository := newTokenStoreRepository()
+		logoutRepository := repositorylogout.NewRepository(client, tokenStoreRepository)
+		logoutService := servicelogout.NewService(logoutRepository)
+
+		runtimeErr = logoutService.Logout(ctx)
+		if runtimeErr == nil {
+			fmt.Fprintln(stdout, "logout succeeded")
+		}
 
 	case "departments":
 
@@ -121,7 +145,7 @@ func Run(
 func printUsage(writer io.Writer) {
 	fmt.Fprintln(writer, `Usage:
 	login [--email EMAIL] [--token-name NAME]
-	me [--json]
+	me
 	logout
 	departments
 	employees
