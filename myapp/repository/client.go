@@ -83,7 +83,7 @@ func (client *Client) DoJSON(
 		message, _ := io.ReadAll(io.LimitReader(response.Body, 1024))
 
 		// 本文が空でなければそれを返し、空ならステータスのみ
-		if text := strings.TrimSpace(string(message)); text != "" {
+		if text := formatAPIErrorMessage(message); text != "" {
 			return fmt.Errorf("API returned %s: %s", response.Status, text)
 		}
 		return fmt.Errorf("API returned %s", response.Status)
@@ -100,4 +100,23 @@ func (client *Client) DoJSON(
 
 	// 参照されたresultに値を詰めているため結果としては返却しない
 	return nil
+}
+
+func formatAPIErrorMessage(message []byte) string {
+	text := strings.TrimSpace(string(message))
+	if text == "" {
+		return ""
+	}
+
+	var apiError struct {
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal(message, &apiError); err != nil {
+		return text
+	}
+
+	if decodedMessage := strings.TrimSpace(apiError.Message); decodedMessage != "" {
+		return decodedMessage
+	}
+	return text
 }
