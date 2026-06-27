@@ -17,7 +17,7 @@ func TestDoJSONFormatsJSONErrorMessage(t *testing.T) {
 	defer server.Close()
 
 	client := NewClient(server.URL, server.Client())
-	err := client.DoJSON(context.Background(), http.MethodGet, "/login", nil, nil)
+	err := client.DoJSON(context.Background(), http.MethodGet, "/login", "", nil, nil)
 
 	if err == nil {
 		t.Fatal("DoJSON() error = nil, want error")
@@ -36,7 +36,7 @@ func TestDoJSONFormatsEscapedJSONErrorMessage(t *testing.T) {
 	defer server.Close()
 
 	client := NewClient(server.URL, server.Client())
-	err := client.DoJSON(context.Background(), http.MethodGet, "/login", nil, nil)
+	err := client.DoJSON(context.Background(), http.MethodGet, "/login", "", nil, nil)
 
 	if err == nil {
 		t.Fatal("DoJSON() error = nil, want error")
@@ -53,7 +53,7 @@ func TestDoJSONKeepsPlainTextErrorMessage(t *testing.T) {
 	defer server.Close()
 
 	client := NewClient(server.URL, server.Client())
-	err := client.DoJSON(context.Background(), http.MethodGet, "/login", nil, nil)
+	err := client.DoJSON(context.Background(), http.MethodGet, "/login", "", nil, nil)
 
 	if err == nil {
 		t.Fatal("DoJSON() error = nil, want error")
@@ -70,7 +70,7 @@ func TestDoJSONFormatsEmptyErrorBody(t *testing.T) {
 	defer server.Close()
 
 	client := NewClient(server.URL, server.Client())
-	err := client.DoJSON(context.Background(), http.MethodGet, "/login", nil, nil)
+	err := client.DoJSON(context.Background(), http.MethodGet, "/login", "", nil, nil)
 
 	if err == nil {
 		t.Fatal("DoJSON() error = nil, want error")

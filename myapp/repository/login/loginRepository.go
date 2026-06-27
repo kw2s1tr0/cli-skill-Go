@@ -30,7 +30,7 @@ func (repository *Repository) Login(
 	body := loginRequest
 	result := &loginResponse
 
-	err := repository.client.DoJSON(ctx, method, path, body, result)
+	err := repository.client.DoJSON(ctx, method, path, "", body, result)
 	if err != nil {
 		return response.Response{}, fmt.Errorf("login: %w", err)
 	}

@@ -34,6 +34,7 @@ func (client *Client) DoJSON(
 	ctx context.Context,
 	method string,
 	path string,
+	accessToken string,
 	body any,
 	result any,
 ) error {
@@ -60,6 +61,10 @@ func (client *Client) DoJSON(
 	}
 
 	request.Header.Set("Accept", "application/json")
+
+	if accessToken != "" {
+		request.Header.Set("Authorization", "Bearer "+accessToken)
+	}
 
 	// get以外はJSONで送る
 	if body != nil {
@@ -93,7 +98,7 @@ func (client *Client) DoJSON(
 		return nil
 	}
 
-	// Jsonからオブジェクトに変換
+	// io.Reader Jsonからオブジェクトに変換
 	if err := json.NewDecoder(response.Body).Decode(result); err != nil {
 		return fmt.Errorf("decode API response: %w", err)
 	}
@@ -102,6 +107,7 @@ func (client *Client) DoJSON(
 	return nil
 }
 
+// 返却値がJSONでない場合もあるため byteにしてからJSONに変換
 func formatAPIErrorMessage(message []byte) string {
 	text := strings.TrimSpace(string(message))
 	if text == "" {
@@ -111,11 +117,15 @@ func formatAPIErrorMessage(message []byte) string {
 	var apiError struct {
 		Message string `json:"message"`
 	}
+
+	// byte JSONから変換する。できない場合(json以外の構造)はそのまま返す
 	if err := json.Unmarshal(message, &apiError); err != nil {
 		return text
 	}
 
-	if decodedMessage := strings.TrimSpace(apiError.Message); decodedMessage != "" {
+	// messageを返す
+	decodedMessage := strings.TrimSpace(apiError.Message)
+	if decodedMessage != "" {
 		return decodedMessage
 	}
 	return text
