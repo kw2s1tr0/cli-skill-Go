@@ -38,5 +38,5 @@ func (service *Service) Positions(ctx context.Context, searchInput input.Input) 
 		return nil, fmt.Errorf("positions: %w", err)
 	}
 
-	return positionoutputbuilder.NewBuilder().BuildList(positions), nil
+	return positionoutputbuilder.NewBuilder().Build(positions), nil
 }

@@ -12,8 +12,8 @@ func NewBuilder() *Builder {
 	return &Builder{}
 }
 
-// BuildListは部署APIレスポンスの一覧をService出力の一覧へ詰め替える。
-func (builder *Builder) BuildList(responses []departmentresponse.Response) []output.Output {
+// Buildは部署APIレスポンスの一覧をService出力の一覧へ詰め替える。
+func (builder *Builder) Build(responses []departmentresponse.Response) []output.Output {
 	result := make([]output.Output, 0, len(responses))
 	for _, response := range responses {
 		result = append(result, builder.build(response))

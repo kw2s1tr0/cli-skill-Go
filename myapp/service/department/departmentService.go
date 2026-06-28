@@ -38,5 +38,5 @@ func (service *Service) Departments(ctx context.Context, searchInput input.Input
 		return nil, fmt.Errorf("departments: %w", err)
 	}
 
-	return departmentoutputbuilder.NewBuilder().BuildList(departments), nil
+	return departmentoutputbuilder.NewBuilder().Build(departments), nil
 }

@@ -5,8 +5,8 @@ import (
 	"testing"
 )
 
-func TestBuildList(t *testing.T) {
-	actual := NewBuilder().BuildList([]meresponse.Response{
+func TestBuild(t *testing.T) {
+	actual := NewBuilder().Build([]meresponse.Response{
 		{ID: 1, Name: "Taro Yamada", Email: "taro@example.com"},
 		{ID: 2, Name: "Jiro Yamada", Email: "jiro@example.com"},
 	})
@@ -18,12 +18,12 @@ func TestBuildList(t *testing.T) {
 		actual[1].ID != 2 ||
 		actual[1].Name != "Jiro Yamada" ||
 		actual[1].Email != "jiro@example.com" {
-		t.Fatalf("BuildList() = %#v", actual)
+		t.Fatalf("Build() = %#v", actual)
 	}
 }
 
-func TestBuildListWithSingleResponse(t *testing.T) {
-	actual := NewBuilder().BuildList([]meresponse.Response{{
+func TestBuildWithSingleResponse(t *testing.T) {
+	actual := NewBuilder().Build([]meresponse.Response{{
 		ID:    1,
 		Name:  "Taro Yamada",
 		Email: "taro@example.com",
@@ -33,6 +33,6 @@ func TestBuildListWithSingleResponse(t *testing.T) {
 		actual[0].ID != 1 ||
 		actual[0].Name != "Taro Yamada" ||
 		actual[0].Email != "taro@example.com" {
-		t.Fatalf("BuildList() = %#v", actual)
+		t.Fatalf("Build() = %#v", actual)
 	}
 }

@@ -5,8 +5,8 @@ import (
 	"testing"
 )
 
-func TestBuildList(t *testing.T) {
-	actual := NewBuilder().BuildList([]employeeresponse.Response{
+func TestBuild(t *testing.T) {
+	actual := NewBuilder().Build([]employeeresponse.Response{
 		{
 			ID:               1,
 			EmployeeNumber:   "EMP-00001",
@@ -41,12 +41,12 @@ func TestBuildList(t *testing.T) {
 		actual[0].Position.Name != "Manager" ||
 		actual[1].ID != 2 ||
 		actual[1].EmployeeNumber != "EMP-00002" {
-		t.Fatalf("BuildList() = %#v", actual)
+		t.Fatalf("Build() = %#v", actual)
 	}
 }
 
-func TestBuildListWithSingleResponse(t *testing.T) {
-	actual := NewBuilder().BuildList([]employeeresponse.Response{{
+func TestBuildWithSingleResponse(t *testing.T) {
+	actual := NewBuilder().Build([]employeeresponse.Response{{
 		ID:             1,
 		EmployeeNumber: "EMP-00001",
 	}})
@@ -54,6 +54,6 @@ func TestBuildListWithSingleResponse(t *testing.T) {
 	if len(actual) != 1 ||
 		actual[0].ID != 1 ||
 		actual[0].EmployeeNumber != "EMP-00001" {
-		t.Fatalf("BuildList() = %#v", actual)
+		t.Fatalf("Build() = %#v", actual)
 	}
 }

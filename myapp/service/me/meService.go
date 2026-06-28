@@ -36,6 +36,6 @@ func (service *Service) Me(ctx context.Context) (output.Output, error) {
 		return output.Output{}, fmt.Errorf("me: %w", err)
 	}
 
-	users := meoutputbuilder.NewBuilder().BuildList([]meresponse.Response{user})
+	users := meoutputbuilder.NewBuilder().Build([]meresponse.Response{user})
 	return users[0], nil
 }

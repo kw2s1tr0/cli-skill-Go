@@ -43,5 +43,5 @@ func (service *Service) Employees(ctx context.Context, searchInput input.Input) 
 		return nil, fmt.Errorf("employees: %w", err)
 	}
 
-	return employeeoutputbuilder.NewBuilder().BuildList(employees), nil
+	return employeeoutputbuilder.NewBuilder().Build(employees), nil
 }
