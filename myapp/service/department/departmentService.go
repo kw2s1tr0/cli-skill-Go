@@ -5,6 +5,7 @@ import (
 	departmentrequestbuilder "aiagentcliapp/repository/department/request/builder"
 	"aiagentcliapp/service/department/input"
 	"aiagentcliapp/service/department/output"
+	departmentoutputbuilder "aiagentcliapp/service/department/output/builder"
 	"context"
 	"fmt"
 )
@@ -37,14 +38,5 @@ func (service *Service) Departments(ctx context.Context, searchInput input.Input
 		return nil, fmt.Errorf("departments: %w", err)
 	}
 
-	result := make([]output.Output, 0, len(departments))
-	for _, department := range departments {
-		result = append(result, output.Output{
-			ID:   department.ID,
-			Code: department.Code,
-			Name: department.Name,
-		})
-	}
-
-	return result, nil
+	return departmentoutputbuilder.NewBuilder().BuildList(departments), nil
 }

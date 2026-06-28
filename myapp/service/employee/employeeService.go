@@ -5,6 +5,7 @@ import (
 	employeerequestbuilder "aiagentcliapp/repository/employee/request/builder"
 	"aiagentcliapp/service/employee/input"
 	"aiagentcliapp/service/employee/output"
+	employeeoutputbuilder "aiagentcliapp/service/employee/output/builder"
 	"context"
 	"fmt"
 )
@@ -42,29 +43,5 @@ func (service *Service) Employees(ctx context.Context, searchInput input.Input) 
 		return nil, fmt.Errorf("employees: %w", err)
 	}
 
-	result := make([]output.Output, 0, len(employees))
-	for _, employee := range employees {
-		result = append(result, output.Output{
-			ID:               employee.ID,
-			EmployeeNumber:   employee.EmployeeNumber,
-			FamilyName:       employee.FamilyName,
-			GivenName:        employee.GivenName,
-			FamilyNameKana:   employee.FamilyNameKana,
-			GivenNameKana:    employee.GivenNameKana,
-			Email:            employee.Email,
-			EmploymentStatus: employee.EmploymentStatus,
-			Department: output.RelatedOutput{
-				ID:   employee.Department.ID,
-				Code: employee.Department.Code,
-				Name: employee.Department.Name,
-			},
-			Position: output.RelatedOutput{
-				ID:   employee.Position.ID,
-				Code: employee.Position.Code,
-				Name: employee.Position.Name,
-			},
-		})
-	}
-
-	return result, nil
+	return employeeoutputbuilder.NewBuilder().BuildList(employees), nil
 }

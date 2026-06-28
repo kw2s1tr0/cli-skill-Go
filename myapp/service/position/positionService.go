@@ -5,6 +5,7 @@ import (
 	positionrequestbuilder "aiagentcliapp/repository/position/request/builder"
 	"aiagentcliapp/service/position/input"
 	"aiagentcliapp/service/position/output"
+	positionoutputbuilder "aiagentcliapp/service/position/output/builder"
 	"context"
 	"fmt"
 )
@@ -37,14 +38,5 @@ func (service *Service) Positions(ctx context.Context, searchInput input.Input) 
 		return nil, fmt.Errorf("positions: %w", err)
 	}
 
-	result := make([]output.Output, 0, len(positions))
-	for _, position := range positions {
-		result = append(result, output.Output{
-			ID:   position.ID,
-			Code: position.Code,
-			Name: position.Name,
-		})
-	}
-
-	return result, nil
+	return positionoutputbuilder.NewBuilder().BuildList(positions), nil
 }

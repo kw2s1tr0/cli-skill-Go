@@ -2,7 +2,9 @@ package me
 
 import (
 	repositoryme "aiagentcliapp/repository/me"
+	meresponse "aiagentcliapp/repository/me/response"
 	"aiagentcliapp/service/me/output"
+	meoutputbuilder "aiagentcliapp/service/me/output/builder"
 	"context"
 	"fmt"
 )
@@ -34,9 +36,6 @@ func (service *Service) Me(ctx context.Context) (output.Output, error) {
 		return output.Output{}, fmt.Errorf("me: %w", err)
 	}
 
-	return output.Output{
-		ID:    user.ID,
-		Name:  user.Name,
-		Email: user.Email,
-	}, nil
+	users := meoutputbuilder.NewBuilder().BuildList([]meresponse.Response{user})
+	return users[0], nil
 }
