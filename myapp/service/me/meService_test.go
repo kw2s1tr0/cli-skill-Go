@@ -3,7 +3,7 @@ package me
 import (
 	rootrepository "aiagentcliapp/repository"
 	repositoryme "aiagentcliapp/repository/me"
-	"aiagentcliapp/repository/me/output"
+	"aiagentcliapp/repository/me/response"
 	"context"
 	"encoding/json"
 	"errors"
@@ -28,7 +28,7 @@ func TestMe(t *testing.T) {
 			t.Errorf("Authorization = %q, want bearer token", authorization)
 		}
 		writer.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(writer).Encode(output.Output{
+		json.NewEncoder(writer).Encode(response.Response{
 			ID:    123,
 			Name:  "User Name",
 			Email: "user@example.com",

@@ -2,7 +2,7 @@ package me
 
 import (
 	repositoryme "aiagentcliapp/repository/me"
-	"aiagentcliapp/repository/me/output"
+	"aiagentcliapp/service/me/output"
 	"context"
 	"fmt"
 )
@@ -34,5 +34,9 @@ func (service *Service) Me(ctx context.Context) (output.Output, error) {
 		return output.Output{}, fmt.Errorf("me: %w", err)
 	}
 
-	return user, nil
+	return output.Output{
+		ID:    user.ID,
+		Name:  user.Name,
+		Email: user.Email,
+	}, nil
 }

@@ -1,6 +1,6 @@
-package output
+package response
 
-type Output struct {
+type Response struct {
 	ID        int    `json:"id"`
 	Code      string `json:"code"`
 	Name      string `json:"name"`

@@ -2,7 +2,8 @@ package employee
 
 import (
 	"aiagentcliapp/repository"
-	"aiagentcliapp/repository/employee/output"
+	employeerequest "aiagentcliapp/repository/employee/request"
+	employeeresponse "aiagentcliapp/repository/employee/response"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -36,7 +37,7 @@ func TestEmployees(t *testing.T) {
 		}
 
 		writer.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(writer).Encode([]output.Output{
+		json.NewEncoder(writer).Encode([]employeeresponse.Response{
 			{
 				ID:               1,
 				EmployeeNumber:   "EMP-00001",
@@ -48,15 +49,15 @@ func TestEmployees(t *testing.T) {
 				GivenNameKana:    "タロウ",
 				Email:            "yamada@example.com",
 				EmploymentStatus: "active",
-				Department:       output.RelatedOutput{ID: 10, Code: "DEV", Name: "Development"},
-				Position:         output.RelatedOutput{ID: 20, Code: "ENG", Name: "Engineer"},
+				Department:       employeeresponse.RelatedResponse{ID: 10, Code: "DEV", Name: "Development"},
+				Position:         employeeresponse.RelatedResponse{ID: 20, Code: "ENG", Name: "Engineer"},
 			},
 		})
 	}))
 	defer server.Close()
 
 	client := repository.NewClient(server.URL, server.Client())
-	actual, err := NewRepository(client).Employees(context.Background(), "1|secret-token", SearchInput{
+	actual, err := NewRepository(client).Employees(context.Background(), "1|secret-token", employeerequest.Request{
 		Keyword:          "Yamada",
 		DepartmentID:     "10",
 		PositionID:       "20",
@@ -90,7 +91,7 @@ func TestEmployeesReturnsAPIError(t *testing.T) {
 	defer server.Close()
 
 	client := repository.NewClient(server.URL, server.Client())
-	_, err := NewRepository(client).Employees(context.Background(), "1|secret-token", SearchInput{})
+	_, err := NewRepository(client).Employees(context.Background(), "1|secret-token", employeerequest.Request{})
 	if err == nil {
 		t.Fatal("Employees() error = nil, want error")
 	}

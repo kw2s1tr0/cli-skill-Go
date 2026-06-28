@@ -2,7 +2,8 @@ package employee
 
 import (
 	"aiagentcliapp/repository"
-	"aiagentcliapp/repository/employee/output"
+	employeerequest "aiagentcliapp/repository/employee/request"
+	employeeresponse "aiagentcliapp/repository/employee/response"
 	"context"
 	"fmt"
 	"net/http"
@@ -13,33 +14,26 @@ type Repository struct {
 	client *repository.Client
 }
 
-type SearchInput struct {
-	Keyword          string
-	DepartmentID     string
-	PositionID       string
-	EmploymentStatus string
-}
-
 func NewRepository(client *repository.Client) *Repository {
 	return &Repository{
 		client: client,
 	}
 }
 
-func (repository *Repository) Employees(ctx context.Context, accessToken string, input SearchInput) ([]output.Output, error) {
-	var employees []output.Output
+func (repository *Repository) Employees(ctx context.Context, accessToken string, requestInput employeerequest.Request) ([]employeeresponse.Response, error) {
+	var employees []employeeresponse.Response
 	query := url.Values{}
-	if input.Keyword != "" {
-		query.Set("keyword", input.Keyword)
+	if requestInput.Keyword != "" {
+		query.Set("keyword", requestInput.Keyword)
 	}
-	if input.DepartmentID != "" {
-		query.Set("department_id", input.DepartmentID)
+	if requestInput.DepartmentID != "" {
+		query.Set("department_id", requestInput.DepartmentID)
 	}
-	if input.PositionID != "" {
-		query.Set("position_id", input.PositionID)
+	if requestInput.PositionID != "" {
+		query.Set("position_id", requestInput.PositionID)
 	}
-	if input.EmploymentStatus != "" {
-		query.Set("employment_status", input.EmploymentStatus)
+	if requestInput.EmploymentStatus != "" {
+		query.Set("employment_status", requestInput.EmploymentStatus)
 	}
 	path := "/api/employees"
 	if encoded := query.Encode(); encoded != "" {

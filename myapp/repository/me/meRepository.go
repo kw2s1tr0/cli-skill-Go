@@ -2,7 +2,7 @@ package me
 
 import (
 	"aiagentcliapp/repository"
-	"aiagentcliapp/repository/me/output"
+	"aiagentcliapp/repository/me/response"
 	"context"
 	"fmt"
 	"net/http"
@@ -18,8 +18,8 @@ func NewRepository(client *repository.Client) *Repository {
 	}
 }
 
-func (repository *Repository) Me(ctx context.Context, accessToken string) (output.Output, error) {
-	var user output.Output
+func (repository *Repository) Me(ctx context.Context, accessToken string) (response.Response, error) {
+	var user response.Response
 
 	err := repository.client.DoJSON(
 		ctx,
@@ -30,7 +30,7 @@ func (repository *Repository) Me(ctx context.Context, accessToken string) (outpu
 		&user,
 	)
 	if err != nil {
-		return output.Output{}, fmt.Errorf("me: %w", err)
+		return response.Response{}, fmt.Errorf("me: %w", err)
 	}
 
 	return user, nil

@@ -2,7 +2,8 @@ package department
 
 import (
 	"aiagentcliapp/repository"
-	"aiagentcliapp/repository/department/output"
+	departmentrequest "aiagentcliapp/repository/department/request"
+	departmentresponse "aiagentcliapp/repository/department/response"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -30,7 +31,7 @@ func TestDepartments(t *testing.T) {
 		}
 
 		writer.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(writer).Encode([]output.Output{
+		json.NewEncoder(writer).Encode([]departmentresponse.Response{
 			{ID: 1, Code: "SALES", Name: "Sales"},
 			{ID: 2, Code: "ENG", Name: "Engineering"},
 		})
@@ -38,7 +39,7 @@ func TestDepartments(t *testing.T) {
 	defer server.Close()
 
 	client := repository.NewClient(server.URL, server.Client())
-	actual, err := NewRepository(client).Departments(context.Background(), "1|secret-token", SearchInput{
+	actual, err := NewRepository(client).Departments(context.Background(), "1|secret-token", departmentrequest.Request{
 		OrderBy:        "name",
 		OrderDirection: "desc",
 	})
@@ -58,7 +59,7 @@ func TestDepartmentsReturnsAPIError(t *testing.T) {
 	defer server.Close()
 
 	client := repository.NewClient(server.URL, server.Client())
-	_, err := NewRepository(client).Departments(context.Background(), "1|secret-token", SearchInput{})
+	_, err := NewRepository(client).Departments(context.Background(), "1|secret-token", departmentrequest.Request{})
 	if err == nil {
 		t.Fatal("Departments() error = nil, want error")
 	}

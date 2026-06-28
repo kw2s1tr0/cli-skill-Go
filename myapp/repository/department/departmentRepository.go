@@ -2,7 +2,8 @@ package department
 
 import (
 	"aiagentcliapp/repository"
-	"aiagentcliapp/repository/department/output"
+	departmentrequest "aiagentcliapp/repository/department/request"
+	departmentresponse "aiagentcliapp/repository/department/response"
 	"context"
 	"fmt"
 	"net/http"
@@ -13,25 +14,20 @@ type Repository struct {
 	client *repository.Client
 }
 
-type SearchInput struct {
-	OrderBy        string
-	OrderDirection string
-}
-
 func NewRepository(client *repository.Client) *Repository {
 	return &Repository{
 		client: client,
 	}
 }
 
-func (repository *Repository) Departments(ctx context.Context, accessToken string, input SearchInput) ([]output.Output, error) {
-	var departments []output.Output
+func (repository *Repository) Departments(ctx context.Context, accessToken string, requestInput departmentrequest.Request) ([]departmentresponse.Response, error) {
+	var departments []departmentresponse.Response
 	query := url.Values{}
-	if input.OrderBy != "" {
-		query.Set("order_by", input.OrderBy)
+	if requestInput.OrderBy != "" {
+		query.Set("order_by", requestInput.OrderBy)
 	}
-	if input.OrderDirection != "" {
-		query.Set("order_direction", input.OrderDirection)
+	if requestInput.OrderDirection != "" {
+		query.Set("order_direction", requestInput.OrderDirection)
 	}
 	path := "/api/departments"
 	if encoded := query.Encode(); encoded != "" {

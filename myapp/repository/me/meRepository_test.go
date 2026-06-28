@@ -2,7 +2,7 @@ package me
 
 import (
 	"aiagentcliapp/repository"
-	"aiagentcliapp/repository/me/output"
+	"aiagentcliapp/repository/me/response"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -23,7 +23,7 @@ func TestMe(t *testing.T) {
 		}
 
 		writer.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(writer).Encode(output.Output{
+		json.NewEncoder(writer).Encode(response.Response{
 			ID:    123,
 			Name:  "User Name",
 			Email: "user@example.com",

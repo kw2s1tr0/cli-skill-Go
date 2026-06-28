@@ -2,7 +2,9 @@ package position
 
 import (
 	repositoryposition "aiagentcliapp/repository/position"
-	"aiagentcliapp/repository/position/output"
+	positionrequestbuilder "aiagentcliapp/repository/position/request/builder"
+	"aiagentcliapp/service/position/input"
+	"aiagentcliapp/service/position/output"
 	"context"
 	"fmt"
 )
@@ -23,16 +25,26 @@ func NewService(repository *repositoryposition.Repository, tokenStore tokenStore
 	}
 }
 
-func (service *Service) Positions(ctx context.Context, input repositoryposition.SearchInput) ([]output.Output, error) {
+func (service *Service) Positions(ctx context.Context, searchInput input.Input) ([]output.Output, error) {
 	accessToken, err := service.tokenStore.GetAccessToken(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("get access token: %w", err)
 	}
 
-	positions, err := service.repository.Positions(ctx, accessToken, input)
+	request := positionrequestbuilder.NewBuilder().Build(searchInput.OrderBy, searchInput.OrderDirection)
+	positions, err := service.repository.Positions(ctx, accessToken, request)
 	if err != nil {
 		return nil, fmt.Errorf("positions: %w", err)
 	}
 
-	return positions, nil
+	result := make([]output.Output, 0, len(positions))
+	for _, position := range positions {
+		result = append(result, output.Output{
+			ID:   position.ID,
+			Code: position.Code,
+			Name: position.Name,
+		})
+	}
+
+	return result, nil
 }

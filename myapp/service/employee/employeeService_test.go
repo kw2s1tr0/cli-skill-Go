@@ -3,7 +3,8 @@ package employee
 import (
 	rootrepository "aiagentcliapp/repository"
 	repositoryemployee "aiagentcliapp/repository/employee"
-	"aiagentcliapp/repository/employee/output"
+	employeeresponse "aiagentcliapp/repository/employee/response"
+	"aiagentcliapp/service/employee/input"
 	"context"
 	"encoding/json"
 	"errors"
@@ -28,7 +29,7 @@ func TestEmployees(t *testing.T) {
 			t.Errorf("Authorization = %q, want bearer token", authorization)
 		}
 		writer.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(writer).Encode([]output.Output{
+		json.NewEncoder(writer).Encode([]employeeresponse.Response{
 			{
 				ID:               1,
 				EmployeeNumber:   "EMP-00001",
@@ -40,8 +41,8 @@ func TestEmployees(t *testing.T) {
 				GivenNameKana:    "タロウ",
 				Email:            "yamada@example.com",
 				EmploymentStatus: "active",
-				Department:       output.RelatedOutput{ID: 10, Code: "DEV", Name: "Development"},
-				Position:         output.RelatedOutput{ID: 20, Code: "ENG", Name: "Engineer"},
+				Department:       employeeresponse.RelatedResponse{ID: 10, Code: "DEV", Name: "Development"},
+				Position:         employeeresponse.RelatedResponse{ID: 20, Code: "ENG", Name: "Engineer"},
 			},
 		})
 	}))
@@ -50,7 +51,7 @@ func TestEmployees(t *testing.T) {
 	client := rootrepository.NewClient(server.URL, server.Client())
 	service := NewService(repositoryemployee.NewRepository(client), &fakeTokenStore{accessToken: "1|secret-token"})
 
-	actual, err := service.Employees(context.Background(), repositoryemployee.SearchInput{})
+	actual, err := service.Employees(context.Background(), input.Input{})
 	if err != nil {
 		t.Fatalf("Employees() error = %v", err)
 	}
@@ -77,7 +78,7 @@ func TestEmployeesReturnsTokenStoreError(t *testing.T) {
 		&fakeTokenStore{err: errors.New("missing token")},
 	)
 
-	_, err := service.Employees(context.Background(), repositoryemployee.SearchInput{})
+	_, err := service.Employees(context.Background(), input.Input{})
 	if err == nil {
 		t.Fatal("Employees() error = nil, want error")
 	}

@@ -3,7 +3,8 @@ package department
 import (
 	rootrepository "aiagentcliapp/repository"
 	repositorydepartment "aiagentcliapp/repository/department"
-	"aiagentcliapp/repository/department/output"
+	departmentresponse "aiagentcliapp/repository/department/response"
+	"aiagentcliapp/service/department/input"
 	"context"
 	"encoding/json"
 	"errors"
@@ -28,7 +29,7 @@ func TestDepartments(t *testing.T) {
 			t.Errorf("Authorization = %q, want bearer token", authorization)
 		}
 		writer.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(writer).Encode([]output.Output{
+		json.NewEncoder(writer).Encode([]departmentresponse.Response{
 			{ID: 1, Code: "SALES", Name: "Sales"},
 			{ID: 2, Code: "ENG", Name: "Engineering"},
 		})
@@ -38,7 +39,7 @@ func TestDepartments(t *testing.T) {
 	client := rootrepository.NewClient(server.URL, server.Client())
 	service := NewService(repositorydepartment.NewRepository(client), &fakeTokenStore{accessToken: "1|secret-token"})
 
-	actual, err := service.Departments(context.Background(), repositorydepartment.SearchInput{})
+	actual, err := service.Departments(context.Background(), input.Input{})
 	if err != nil {
 		t.Fatalf("Departments() error = %v", err)
 	}
@@ -53,7 +54,7 @@ func TestDepartmentsReturnsTokenStoreError(t *testing.T) {
 		&fakeTokenStore{err: errors.New("missing token")},
 	)
 
-	_, err := service.Departments(context.Background(), repositorydepartment.SearchInput{})
+	_, err := service.Departments(context.Background(), input.Input{})
 	if err == nil {
 		t.Fatal("Departments() error = nil, want error")
 	}

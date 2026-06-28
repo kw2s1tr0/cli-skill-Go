@@ -10,18 +10,19 @@ import (
 	repositoryposition "aiagentcliapp/repository/position"
 	repositorytokenstore "aiagentcliapp/repository/tokenstore"
 	servicedepartment "aiagentcliapp/service/department"
+	departmentinputbuilder "aiagentcliapp/service/department/input/builder"
 	serviceemployee "aiagentcliapp/service/employee"
+	employeeinputbuilder "aiagentcliapp/service/employee/input/builder"
 	servicelogin "aiagentcliapp/service/login"
-	inputbuilder "aiagentcliapp/service/login/input/builder"
+	logininputbuilder "aiagentcliapp/service/login/input/builder"
 	servicelogout "aiagentcliapp/service/logout"
 	serviceme "aiagentcliapp/service/me"
 	serviceposition "aiagentcliapp/service/position"
+	positioninputbuilder "aiagentcliapp/service/position/input/builder"
 	"context"
-	"flag"
 	"fmt"
 	"io"
 	"os"
-	"strconv"
 )
 
 const (
@@ -83,7 +84,7 @@ func Run(
 			break
 		}
 
-		loginInput, err := inputbuilder.NewBuilder().Build(args[1:], string(password))
+		loginInput, err := logininputbuilder.NewBuilder().Build(args[1:], string(password))
 		if err != nil {
 			validationErr = err
 			break
@@ -122,7 +123,7 @@ func Run(
 		}
 
 	case "departments":
-		searchInput, err := buildDepartmentSearchInput(args[1:])
+		searchInput, err := departmentinputbuilder.NewBuilder().Build(args[1:])
 		if err != nil {
 			validationErr = err
 			break
@@ -142,7 +143,7 @@ func Run(
 		}
 
 	case "employees":
-		searchInput, err := buildEmployeeSearchInput(args[1:])
+		searchInput, err := employeeinputbuilder.NewBuilder().Build(args[1:])
 		if err != nil {
 			validationErr = err
 			break
@@ -179,7 +180,7 @@ func Run(
 		}
 
 	case "positions":
-		searchInput, err := buildPositionSearchInput(args[1:])
+		searchInput, err := positioninputbuilder.NewBuilder().Build(args[1:])
 		if err != nil {
 			validationErr = err
 			break
@@ -252,109 +253,4 @@ func printHelp(writer io.Writer) {
 // エラー表示を1か所にまとめ、stdoutとstderrの使い分けを崩さないようにする。
 func printError(writer io.Writer, err error) {
 	fmt.Fprintln(writer, "error:", err)
-}
-
-func buildDepartmentSearchInput(args []string) (repositorydepartment.SearchInput, error) {
-	flags := flag.NewFlagSet("departments", flag.ContinueOnError)
-	flags.SetOutput(io.Discard)
-
-	orderBy := flags.String("order-by", "", "order by id, code, or name")
-	orderDirection := flags.String("order-direction", "", "order direction asc or desc")
-	if err := flags.Parse(args); err != nil {
-		return repositorydepartment.SearchInput{}, err
-	}
-	if flags.NArg() != 0 {
-		return repositorydepartment.SearchInput{}, fmt.Errorf("unexpected argument %q", flags.Arg(0))
-	}
-	if err := validateOneOf("order-by", *orderBy, "id", "code", "name"); err != nil {
-		return repositorydepartment.SearchInput{}, err
-	}
-	if err := validateOneOf("order-direction", *orderDirection, "asc", "desc"); err != nil {
-		return repositorydepartment.SearchInput{}, err
-	}
-
-	return repositorydepartment.SearchInput{
-		OrderBy:        *orderBy,
-		OrderDirection: *orderDirection,
-	}, nil
-}
-
-func buildPositionSearchInput(args []string) (repositoryposition.SearchInput, error) {
-	flags := flag.NewFlagSet("positions", flag.ContinueOnError)
-	flags.SetOutput(io.Discard)
-
-	orderBy := flags.String("order-by", "", "order by id, code, or name")
-	orderDirection := flags.String("order-direction", "", "order direction asc or desc")
-	if err := flags.Parse(args); err != nil {
-		return repositoryposition.SearchInput{}, err
-	}
-	if flags.NArg() != 0 {
-		return repositoryposition.SearchInput{}, fmt.Errorf("unexpected argument %q", flags.Arg(0))
-	}
-	if err := validateOneOf("order-by", *orderBy, "id", "code", "name"); err != nil {
-		return repositoryposition.SearchInput{}, err
-	}
-	if err := validateOneOf("order-direction", *orderDirection, "asc", "desc"); err != nil {
-		return repositoryposition.SearchInput{}, err
-	}
-
-	return repositoryposition.SearchInput{
-		OrderBy:        *orderBy,
-		OrderDirection: *orderDirection,
-	}, nil
-}
-
-func buildEmployeeSearchInput(args []string) (repositoryemployee.SearchInput, error) {
-	flags := flag.NewFlagSet("employees", flag.ContinueOnError)
-	flags.SetOutput(io.Discard)
-
-	keyword := flags.String("keyword", "", "search keyword")
-	departmentID := flags.String("department-id", "", "department id")
-	positionID := flags.String("position-id", "", "position id")
-	employmentStatus := flags.String("employment-status", "", "employment status active, leave, or retired")
-	if err := flags.Parse(args); err != nil {
-		return repositoryemployee.SearchInput{}, err
-	}
-	if flags.NArg() != 0 {
-		return repositoryemployee.SearchInput{}, fmt.Errorf("unexpected argument %q", flags.Arg(0))
-	}
-	if err := validatePositiveInteger("department-id", *departmentID); err != nil {
-		return repositoryemployee.SearchInput{}, err
-	}
-	if err := validatePositiveInteger("position-id", *positionID); err != nil {
-		return repositoryemployee.SearchInput{}, err
-	}
-	if err := validateOneOf("employment-status", *employmentStatus, "active", "leave", "retired"); err != nil {
-		return repositoryemployee.SearchInput{}, err
-	}
-
-	return repositoryemployee.SearchInput{
-		Keyword:          *keyword,
-		DepartmentID:     *departmentID,
-		PositionID:       *positionID,
-		EmploymentStatus: *employmentStatus,
-	}, nil
-}
-
-func validateOneOf(name, value string, allowed ...string) error {
-	if value == "" {
-		return nil
-	}
-	for _, candidate := range allowed {
-		if value == candidate {
-			return nil
-		}
-	}
-	return fmt.Errorf("%s must be one of %v", name, allowed)
-}
-
-func validatePositiveInteger(name, value string) error {
-	if value == "" {
-		return nil
-	}
-	number, err := strconv.Atoi(value)
-	if err != nil || number <= 0 {
-		return fmt.Errorf("%s must be a positive integer", name)
-	}
-	return nil
 }

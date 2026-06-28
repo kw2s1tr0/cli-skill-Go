@@ -3,7 +3,8 @@ package position
 import (
 	rootrepository "aiagentcliapp/repository"
 	repositoryposition "aiagentcliapp/repository/position"
-	"aiagentcliapp/repository/position/output"
+	positionresponse "aiagentcliapp/repository/position/response"
+	"aiagentcliapp/service/position/input"
 	"context"
 	"encoding/json"
 	"errors"
@@ -28,7 +29,7 @@ func TestPositions(t *testing.T) {
 			t.Errorf("Authorization = %q, want bearer token", authorization)
 		}
 		writer.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(writer).Encode([]output.Output{
+		json.NewEncoder(writer).Encode([]positionresponse.Response{
 			{ID: 1, Code: "MGR", Name: "Manager"},
 			{ID: 2, Code: "ENG", Name: "Engineer"},
 		})
@@ -38,7 +39,7 @@ func TestPositions(t *testing.T) {
 	client := rootrepository.NewClient(server.URL, server.Client())
 	service := NewService(repositoryposition.NewRepository(client), &fakeTokenStore{accessToken: "1|secret-token"})
 
-	actual, err := service.Positions(context.Background(), repositoryposition.SearchInput{})
+	actual, err := service.Positions(context.Background(), input.Input{})
 	if err != nil {
 		t.Fatalf("Positions() error = %v", err)
 	}
@@ -53,7 +54,7 @@ func TestPositionsReturnsTokenStoreError(t *testing.T) {
 		&fakeTokenStore{err: errors.New("missing token")},
 	)
 
-	_, err := service.Positions(context.Background(), repositoryposition.SearchInput{})
+	_, err := service.Positions(context.Background(), input.Input{})
 	if err == nil {
 		t.Fatal("Positions() error = nil, want error")
 	}
