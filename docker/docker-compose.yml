@@ -12,9 +12,6 @@ services:
       - type: volume
         source: codex-data
         target: /root/.codex
-      - type: bind
-        source: ../../staff-search-app
-        target: /app/staff-search-app
     tty: true
 
 volumes:
