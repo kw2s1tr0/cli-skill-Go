@@ -33,6 +33,82 @@ func (store *fakeTokenStore) DeleteAccessToken(ctx context.Context) error {
 	return nil
 }
 
+func TestRunWithoutCommandShowsUsage(t *testing.T) {
+	client := repository.NewClient("http://example.com", http.DefaultClient)
+	var stdout, stderr bytes.Buffer
+	passwordReader := func(fd int) ([]byte, error) {
+		t.Fatal("ReadPassword() was called")
+		return nil, nil
+	}
+
+	code := Run(
+		nil,
+		client,
+		context.Background(),
+		os.Stdin,
+		&stdout,
+		&stderr,
+		passwordReader,
+	)
+
+	if code != ExitUsage {
+		t.Fatalf("Run() = %d, want %d", code, ExitUsage)
+	}
+	if got := stdout.String(); got != "" {
+		t.Fatalf("stdout = %q, want empty", got)
+	}
+	for _, want := range []string{
+		"login [--email EMAIL] [--token-name NAME]  Login and save access token",
+		"me                                         Show current user",
+		"logout                                     Logout and delete access token",
+		"departments [--order-by id|code|name] [--order-direction asc|desc]",
+		"employees [--keyword KEYWORD] [--department-id ID] [--position-id ID] [--employment-status active|leave|retired]",
+		"positions [--order-by id|code|name] [--order-direction asc|desc]",
+	} {
+		if !strings.Contains(stderr.String(), want) {
+			t.Fatalf("stderr = %q, want %q", stderr.String(), want)
+		}
+	}
+}
+
+func TestHelpShowsCommandUsage(t *testing.T) {
+	client := repository.NewClient("http://example.com", http.DefaultClient)
+	var stdout, stderr bytes.Buffer
+	passwordReader := func(fd int) ([]byte, error) {
+		t.Fatal("ReadPassword() was called")
+		return nil, nil
+	}
+
+	code := Run(
+		[]string{"help"},
+		client,
+		context.Background(),
+		os.Stdin,
+		&stdout,
+		&stderr,
+		passwordReader,
+	)
+
+	if code != ExitOK {
+		t.Fatalf("Run() = %d, want %d", code, ExitOK)
+	}
+	if got := stderr.String(); got != "" {
+		t.Fatalf("stderr = %q, want empty", got)
+	}
+	for _, want := range []string{
+		"login [--email EMAIL] [--token-name NAME]  Login and save access token",
+		"me                                         Show current user",
+		"logout                                     Logout and delete access token",
+		"departments [--order-by id|code|name] [--order-direction asc|desc]",
+		"employees [--keyword KEYWORD] [--department-id ID] [--position-id ID] [--employment-status active|leave|retired]",
+		"positions [--order-by id|code|name] [--order-direction asc|desc]",
+	} {
+		if !strings.Contains(stdout.String(), want) {
+			t.Fatalf("stdout = %q, want %q", stdout.String(), want)
+		}
+	}
+}
+
 func TestLoginPromptsForPassword(t *testing.T) {
 	tokenStore := &fakeTokenStore{}
 	originalNewTokenStoreRepository := newTokenStoreRepository
@@ -271,13 +347,19 @@ func TestDepartments(t *testing.T) {
 		if request.URL.Path != "/api/departments" {
 			t.Errorf("path = %s, want /api/departments", request.URL.Path)
 		}
+		if got := request.URL.Query().Get("order_by"); got != "name" {
+			t.Errorf("order_by = %q, want name", got)
+		}
+		if got := request.URL.Query().Get("order_direction"); got != "desc" {
+			t.Errorf("order_direction = %q, want desc", got)
+		}
 		if authorization := request.Header.Get("Authorization"); authorization != "Bearer 1|secret-token" {
 			t.Errorf("Authorization = %q, want bearer token", authorization)
 		}
 		writer.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(writer).Encode([]map[string]any{
-			{"id": 1, "name": "Sales"},
-			{"id": 2, "name": "Engineering"},
+			{"id": 1, "code": "SALES", "name": "Sales"},
+			{"id": 2, "code": "ENG", "name": "Engineering"},
 		})
 	}))
 	defer server.Close()
@@ -290,7 +372,7 @@ func TestDepartments(t *testing.T) {
 	}
 
 	code := Run(
-		[]string{"departments"},
+		[]string{"departments", "--order-by", "name", "--order-direction", "desc"},
 		client,
 		context.Background(),
 		os.Stdin,
@@ -302,7 +384,7 @@ func TestDepartments(t *testing.T) {
 	if code != ExitOK {
 		t.Fatalf("Run() = %d, want %d; stderr = %q", code, ExitOK, stderr.String())
 	}
-	if got := stdout.String(); got != "ID: 1\nName: Sales\nID: 2\nName: Engineering\n" {
+	if got := stdout.String(); got != "ID: 1\nCode: SALES\nName: Sales\nID: 2\nCode: ENG\nName: Engineering\n" {
 		t.Fatalf("stdout = %q, want departments output", got)
 	}
 	if got := stderr.String(); got != "" {
@@ -371,24 +453,44 @@ func TestEmployees(t *testing.T) {
 		if request.URL.Path != "/api/employees" {
 			t.Errorf("path = %s, want /api/employees", request.URL.Path)
 		}
+		if got := request.URL.Query().Get("keyword"); got != "Yamada" {
+			t.Errorf("keyword = %q, want Yamada", got)
+		}
+		if got := request.URL.Query().Get("department_id"); got != "10" {
+			t.Errorf("department_id = %q, want 10", got)
+		}
+		if got := request.URL.Query().Get("position_id"); got != "20" {
+			t.Errorf("position_id = %q, want 20", got)
+		}
+		if got := request.URL.Query().Get("employment_status"); got != "active" {
+			t.Errorf("employment_status = %q, want active", got)
+		}
 		if authorization := request.Header.Get("Authorization"); authorization != "Bearer 1|secret-token" {
 			t.Errorf("Authorization = %q, want bearer token", authorization)
 		}
 		writer.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(writer).Encode([]map[string]any{
 			{
-				"id":         1,
-				"name":       "Alice",
-				"email":      "alice@example.com",
-				"department": "Sales",
-				"position":   "Manager",
-			},
-			{
-				"id":         2,
-				"name":       "Bob",
-				"email":      "bob@example.com",
-				"department": "Engineering",
-				"position":   "Engineer",
+				"id":                1,
+				"employee_number":   "EMP-00001",
+				"department_id":     10,
+				"position_id":       20,
+				"family_name":       "Yamada",
+				"given_name":        "Taro",
+				"family_name_kana":  "ヤマダ",
+				"given_name_kana":   "タロウ",
+				"email":             "yamada@example.com",
+				"employment_status": "active",
+				"department": map[string]any{
+					"id":   10,
+					"code": "DEV",
+					"name": "Development",
+				},
+				"position": map[string]any{
+					"id":   20,
+					"code": "ENG",
+					"name": "Engineer",
+				},
 			},
 		})
 	}))
@@ -402,7 +504,7 @@ func TestEmployees(t *testing.T) {
 	}
 
 	code := Run(
-		[]string{"employees"},
+		[]string{"employees", "--keyword", "Yamada", "--department-id", "10", "--position-id", "20", "--employment-status", "active"},
 		client,
 		context.Background(),
 		os.Stdin,
@@ -414,7 +516,7 @@ func TestEmployees(t *testing.T) {
 	if code != ExitOK {
 		t.Fatalf("Run() = %d, want %d; stderr = %q", code, ExitOK, stderr.String())
 	}
-	if got := stdout.String(); got != "ID: 1\nName: Alice\nEmail: alice@example.com\nDepartment: Sales\nPosition: Manager\nID: 2\nName: Bob\nEmail: bob@example.com\nDepartment: Engineering\nPosition: Engineer\n" {
+	if got := stdout.String(); got != "ID: 1\nEmployeeNumber: EMP-00001\nName: Yamada Taro\nNameKana: ヤマダ タロウ\nEmail: yamada@example.com\nEmploymentStatus: active\nDepartment: 10 DEV Development\nPosition: 20 ENG Engineer\n" {
 		t.Fatalf("stdout = %q, want employees output", got)
 	}
 	if got := stderr.String(); got != "" {
@@ -483,13 +585,19 @@ func TestPositions(t *testing.T) {
 		if request.URL.Path != "/api/positions" {
 			t.Errorf("path = %s, want /api/positions", request.URL.Path)
 		}
+		if got := request.URL.Query().Get("order_by"); got != "code" {
+			t.Errorf("order_by = %q, want code", got)
+		}
+		if got := request.URL.Query().Get("order_direction"); got != "asc" {
+			t.Errorf("order_direction = %q, want asc", got)
+		}
 		if authorization := request.Header.Get("Authorization"); authorization != "Bearer 1|secret-token" {
 			t.Errorf("Authorization = %q, want bearer token", authorization)
 		}
 		writer.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(writer).Encode([]map[string]any{
-			{"id": 1, "name": "Manager"},
-			{"id": 2, "name": "Engineer"},
+			{"id": 1, "code": "MGR", "name": "Manager"},
+			{"id": 2, "code": "ENG", "name": "Engineer"},
 		})
 	}))
 	defer server.Close()
@@ -502,7 +610,7 @@ func TestPositions(t *testing.T) {
 	}
 
 	code := Run(
-		[]string{"positions"},
+		[]string{"positions", "--order-by", "code", "--order-direction", "asc"},
 		client,
 		context.Background(),
 		os.Stdin,
@@ -514,7 +622,7 @@ func TestPositions(t *testing.T) {
 	if code != ExitOK {
 		t.Fatalf("Run() = %d, want %d; stderr = %q", code, ExitOK, stderr.String())
 	}
-	if got := stdout.String(); got != "ID: 1\nName: Manager\nID: 2\nName: Engineer\n" {
+	if got := stdout.String(); got != "ID: 1\nCode: MGR\nName: Manager\nID: 2\nCode: ENG\nName: Engineer\n" {
 		t.Fatalf("stdout = %q, want positions output", got)
 	}
 	if got := stderr.String(); got != "" {

@@ -29,8 +29,8 @@ func TestDepartments(t *testing.T) {
 		}
 		writer.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(writer).Encode([]output.Output{
-			{ID: 1, Name: "Sales"},
-			{ID: 2, Name: "Engineering"},
+			{ID: 1, Code: "SALES", Name: "Sales"},
+			{ID: 2, Code: "ENG", Name: "Engineering"},
 		})
 	}))
 	defer server.Close()
@@ -38,11 +38,11 @@ func TestDepartments(t *testing.T) {
 	client := rootrepository.NewClient(server.URL, server.Client())
 	service := NewService(repositorydepartment.NewRepository(client), &fakeTokenStore{accessToken: "1|secret-token"})
 
-	actual, err := service.Departments(context.Background())
+	actual, err := service.Departments(context.Background(), repositorydepartment.SearchInput{})
 	if err != nil {
 		t.Fatalf("Departments() error = %v", err)
 	}
-	if len(actual) != 2 || actual[0].ID != 1 || actual[0].Name != "Sales" || actual[1].ID != 2 || actual[1].Name != "Engineering" {
+	if len(actual) != 2 || actual[0].ID != 1 || actual[0].Code != "SALES" || actual[0].Name != "Sales" || actual[1].ID != 2 || actual[1].Code != "ENG" || actual[1].Name != "Engineering" {
 		t.Fatalf("Departments() = %#v", actual)
 	}
 }
@@ -53,7 +53,7 @@ func TestDepartmentsReturnsTokenStoreError(t *testing.T) {
 		&fakeTokenStore{err: errors.New("missing token")},
 	)
 
-	_, err := service.Departments(context.Background())
+	_, err := service.Departments(context.Background(), repositorydepartment.SearchInput{})
 	if err == nil {
 		t.Fatal("Departments() error = nil, want error")
 	}

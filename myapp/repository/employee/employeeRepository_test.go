@@ -19,34 +19,65 @@ func TestEmployees(t *testing.T) {
 		if request.URL.Path != "/api/employees" {
 			t.Errorf("path = %s, want /api/employees", request.URL.Path)
 		}
+		if got := request.URL.Query().Get("keyword"); got != "Yamada" {
+			t.Errorf("keyword = %q, want Yamada", got)
+		}
+		if got := request.URL.Query().Get("department_id"); got != "10" {
+			t.Errorf("department_id = %q, want 10", got)
+		}
+		if got := request.URL.Query().Get("position_id"); got != "20" {
+			t.Errorf("position_id = %q, want 20", got)
+		}
+		if got := request.URL.Query().Get("employment_status"); got != "active" {
+			t.Errorf("employment_status = %q, want active", got)
+		}
 		if authorization := request.Header.Get("Authorization"); authorization != "Bearer 1|secret-token" {
 			t.Errorf("Authorization = %q, want bearer token", authorization)
 		}
 
 		writer.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(writer).Encode([]output.Output{
-			{ID: 1, Name: "Alice", Email: "alice@example.com", Department: "Sales", Position: "Manager"},
-			{ID: 2, Name: "Bob", Email: "bob@example.com", Department: "Engineering", Position: "Engineer"},
+			{
+				ID:               1,
+				EmployeeNumber:   "EMP-00001",
+				DepartmentID:     10,
+				PositionID:       20,
+				FamilyName:       "Yamada",
+				GivenName:        "Taro",
+				FamilyNameKana:   "ヤマダ",
+				GivenNameKana:    "タロウ",
+				Email:            "yamada@example.com",
+				EmploymentStatus: "active",
+				Department:       output.RelatedOutput{ID: 10, Code: "DEV", Name: "Development"},
+				Position:         output.RelatedOutput{ID: 20, Code: "ENG", Name: "Engineer"},
+			},
 		})
 	}))
 	defer server.Close()
 
 	client := repository.NewClient(server.URL, server.Client())
-	actual, err := NewRepository(client).Employees(context.Background(), "1|secret-token")
+	actual, err := NewRepository(client).Employees(context.Background(), "1|secret-token", SearchInput{
+		Keyword:          "Yamada",
+		DepartmentID:     "10",
+		PositionID:       "20",
+		EmploymentStatus: "active",
+	})
 	if err != nil {
 		t.Fatalf("Employees() error = %v", err)
 	}
-	if len(actual) != 2 ||
+	if len(actual) != 1 ||
 		actual[0].ID != 1 ||
-		actual[0].Name != "Alice" ||
-		actual[0].Email != "alice@example.com" ||
-		actual[0].Department != "Sales" ||
-		actual[0].Position != "Manager" ||
-		actual[1].ID != 2 ||
-		actual[1].Name != "Bob" ||
-		actual[1].Email != "bob@example.com" ||
-		actual[1].Department != "Engineering" ||
-		actual[1].Position != "Engineer" {
+		actual[0].EmployeeNumber != "EMP-00001" ||
+		actual[0].FamilyName != "Yamada" ||
+		actual[0].GivenName != "Taro" ||
+		actual[0].Email != "yamada@example.com" ||
+		actual[0].EmploymentStatus != "active" ||
+		actual[0].Department.ID != 10 ||
+		actual[0].Department.Code != "DEV" ||
+		actual[0].Department.Name != "Development" ||
+		actual[0].Position.ID != 20 ||
+		actual[0].Position.Code != "ENG" ||
+		actual[0].Position.Name != "Engineer" {
 		t.Fatalf("Employees() = %#v", actual)
 	}
 }
@@ -59,7 +90,7 @@ func TestEmployeesReturnsAPIError(t *testing.T) {
 	defer server.Close()
 
 	client := repository.NewClient(server.URL, server.Client())
-	_, err := NewRepository(client).Employees(context.Background(), "1|secret-token")
+	_, err := NewRepository(client).Employees(context.Background(), "1|secret-token", SearchInput{})
 	if err == nil {
 		t.Fatal("Employees() error = nil, want error")
 	}

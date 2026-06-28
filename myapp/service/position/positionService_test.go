@@ -29,8 +29,8 @@ func TestPositions(t *testing.T) {
 		}
 		writer.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(writer).Encode([]output.Output{
-			{ID: 1, Name: "Manager"},
-			{ID: 2, Name: "Engineer"},
+			{ID: 1, Code: "MGR", Name: "Manager"},
+			{ID: 2, Code: "ENG", Name: "Engineer"},
 		})
 	}))
 	defer server.Close()
@@ -38,11 +38,11 @@ func TestPositions(t *testing.T) {
 	client := rootrepository.NewClient(server.URL, server.Client())
 	service := NewService(repositoryposition.NewRepository(client), &fakeTokenStore{accessToken: "1|secret-token"})
 
-	actual, err := service.Positions(context.Background())
+	actual, err := service.Positions(context.Background(), repositoryposition.SearchInput{})
 	if err != nil {
 		t.Fatalf("Positions() error = %v", err)
 	}
-	if len(actual) != 2 || actual[0].ID != 1 || actual[0].Name != "Manager" || actual[1].ID != 2 || actual[1].Name != "Engineer" {
+	if len(actual) != 2 || actual[0].ID != 1 || actual[0].Code != "MGR" || actual[0].Name != "Manager" || actual[1].ID != 2 || actual[1].Code != "ENG" || actual[1].Name != "Engineer" {
 		t.Fatalf("Positions() = %#v", actual)
 	}
 }
@@ -53,7 +53,7 @@ func TestPositionsReturnsTokenStoreError(t *testing.T) {
 		&fakeTokenStore{err: errors.New("missing token")},
 	)
 
-	_, err := service.Positions(context.Background())
+	_, err := service.Positions(context.Background(), repositoryposition.SearchInput{})
 	if err == nil {
 		t.Fatal("Positions() error = nil, want error")
 	}

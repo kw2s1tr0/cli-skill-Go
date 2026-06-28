@@ -23,13 +23,13 @@ func NewService(repository *repositorydepartment.Repository, tokenStore tokenSto
 	}
 }
 
-func (service *Service) Departments(ctx context.Context) ([]output.Output, error) {
+func (service *Service) Departments(ctx context.Context, input repositorydepartment.SearchInput) ([]output.Output, error) {
 	accessToken, err := service.tokenStore.GetAccessToken(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("get access token: %w", err)
 	}
 
-	departments, err := service.repository.Departments(ctx, accessToken)
+	departments, err := service.repository.Departments(ctx, accessToken, input)
 	if err != nil {
 		return nil, fmt.Errorf("departments: %w", err)
 	}

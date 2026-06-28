@@ -17,9 +17,11 @@ import (
 	serviceme "aiagentcliapp/service/me"
 	serviceposition "aiagentcliapp/service/position"
 	"context"
+	"flag"
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 )
 
 const (
@@ -120,25 +122,37 @@ func Run(
 		}
 
 	case "departments":
+		searchInput, err := buildDepartmentSearchInput(args[1:])
+		if err != nil {
+			validationErr = err
+			break
+		}
+
 		departmentRepository := repositorydepartment.NewRepository(client)
 		tokenStoreRepository := newTokenStoreRepository()
 		departmentService := servicedepartment.NewService(departmentRepository, tokenStoreRepository)
 
-		departments, err := departmentService.Departments(ctx)
+		departments, err := departmentService.Departments(ctx, searchInput)
 		if err != nil {
 			runtimeErr = err
 			break
 		}
 		for _, department := range departments {
-			fmt.Fprintf(stdout, "ID: %d\nName: %s\n", department.ID, department.Name)
+			fmt.Fprintf(stdout, "ID: %d\nCode: %s\nName: %s\n", department.ID, department.Code, department.Name)
 		}
 
 	case "employees":
+		searchInput, err := buildEmployeeSearchInput(args[1:])
+		if err != nil {
+			validationErr = err
+			break
+		}
+
 		employeeRepository := repositoryemployee.NewRepository(client)
 		tokenStoreRepository := newTokenStoreRepository()
 		employeeService := serviceemployee.NewService(employeeRepository, tokenStoreRepository)
 
-		employees, err := employeeService.Employees(ctx)
+		employees, err := employeeService.Employees(ctx, searchInput)
 		if err != nil {
 			runtimeErr = err
 			break
@@ -146,27 +160,42 @@ func Run(
 		for _, employee := range employees {
 			fmt.Fprintf(
 				stdout,
-				"ID: %d\nName: %s\nEmail: %s\nDepartment: %s\nPosition: %s\n",
+				"ID: %d\nEmployeeNumber: %s\nName: %s %s\nNameKana: %s %s\nEmail: %s\nEmploymentStatus: %s\nDepartment: %d %s %s\nPosition: %d %s %s\n",
 				employee.ID,
-				employee.Name,
+				employee.EmployeeNumber,
+				employee.FamilyName,
+				employee.GivenName,
+				employee.FamilyNameKana,
+				employee.GivenNameKana,
 				employee.Email,
-				employee.Department,
-				employee.Position,
+				employee.EmploymentStatus,
+				employee.Department.ID,
+				employee.Department.Code,
+				employee.Department.Name,
+				employee.Position.ID,
+				employee.Position.Code,
+				employee.Position.Name,
 			)
 		}
 
 	case "positions":
+		searchInput, err := buildPositionSearchInput(args[1:])
+		if err != nil {
+			validationErr = err
+			break
+		}
+
 		positionRepository := repositoryposition.NewRepository(client)
 		tokenStoreRepository := newTokenStoreRepository()
 		positionService := serviceposition.NewService(positionRepository, tokenStoreRepository)
 
-		positions, err := positionService.Positions(ctx)
+		positions, err := positionService.Positions(ctx, searchInput)
 		if err != nil {
 			runtimeErr = err
 			break
 		}
 		for _, position := range positions {
-			fmt.Fprintf(stdout, "ID: %d\nName: %s\n", position.ID, position.Name)
+			fmt.Fprintf(stdout, "ID: %d\nCode: %s\nName: %s\n", position.ID, position.Code, position.Name)
 		}
 
 	default:
@@ -194,27 +223,138 @@ func Run(
 // printUsageは、入力が足りない・間違っている場合に最低限の使い方を表示する。
 func printUsage(writer io.Writer) {
 	fmt.Fprintln(writer, `Usage:
-	login [--email EMAIL] [--token-name NAME]
-	me
-	logout
-	departments
-	employees
-	positions
-	help`)
+	login [--email EMAIL] [--token-name NAME]  Login and save access token
+	me                                         Show current user
+	logout                                     Logout and delete access token
+	departments [--order-by id|code|name] [--order-direction asc|desc]
+	                                           Search departments
+	employees [--keyword KEYWORD] [--department-id ID] [--position-id ID] [--employment-status active|leave|retired]
+	                                           Search employees
+	positions [--order-by id|code|name] [--order-direction asc|desc]
+	                                           Search positions
+	help                                       Show command list`)
 }
 
 // printHelpは、明示的にhelpが指定されたときのコマンド一覧を表示する。
 func printHelp(writer io.Writer) {
-	fmt.Fprintln(writer, `command list:
-	login
-	me
-	logout
-	departments
-	employees
-	positions`)
+	fmt.Fprintln(writer, `Commands:
+	login [--email EMAIL] [--token-name NAME]  Login and save access token
+	me                                         Show current user
+	logout                                     Logout and delete access token
+	departments [--order-by id|code|name] [--order-direction asc|desc]
+	                                           Search departments
+	employees [--keyword KEYWORD] [--department-id ID] [--position-id ID] [--employment-status active|leave|retired]
+	                                           Search employees
+	positions [--order-by id|code|name] [--order-direction asc|desc]
+	                                           Search positions`)
 }
 
 // エラー表示を1か所にまとめ、stdoutとstderrの使い分けを崩さないようにする。
 func printError(writer io.Writer, err error) {
 	fmt.Fprintln(writer, "error:", err)
+}
+
+func buildDepartmentSearchInput(args []string) (repositorydepartment.SearchInput, error) {
+	flags := flag.NewFlagSet("departments", flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+
+	orderBy := flags.String("order-by", "", "order by id, code, or name")
+	orderDirection := flags.String("order-direction", "", "order direction asc or desc")
+	if err := flags.Parse(args); err != nil {
+		return repositorydepartment.SearchInput{}, err
+	}
+	if flags.NArg() != 0 {
+		return repositorydepartment.SearchInput{}, fmt.Errorf("unexpected argument %q", flags.Arg(0))
+	}
+	if err := validateOneOf("order-by", *orderBy, "id", "code", "name"); err != nil {
+		return repositorydepartment.SearchInput{}, err
+	}
+	if err := validateOneOf("order-direction", *orderDirection, "asc", "desc"); err != nil {
+		return repositorydepartment.SearchInput{}, err
+	}
+
+	return repositorydepartment.SearchInput{
+		OrderBy:        *orderBy,
+		OrderDirection: *orderDirection,
+	}, nil
+}
+
+func buildPositionSearchInput(args []string) (repositoryposition.SearchInput, error) {
+	flags := flag.NewFlagSet("positions", flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+
+	orderBy := flags.String("order-by", "", "order by id, code, or name")
+	orderDirection := flags.String("order-direction", "", "order direction asc or desc")
+	if err := flags.Parse(args); err != nil {
+		return repositoryposition.SearchInput{}, err
+	}
+	if flags.NArg() != 0 {
+		return repositoryposition.SearchInput{}, fmt.Errorf("unexpected argument %q", flags.Arg(0))
+	}
+	if err := validateOneOf("order-by", *orderBy, "id", "code", "name"); err != nil {
+		return repositoryposition.SearchInput{}, err
+	}
+	if err := validateOneOf("order-direction", *orderDirection, "asc", "desc"); err != nil {
+		return repositoryposition.SearchInput{}, err
+	}
+
+	return repositoryposition.SearchInput{
+		OrderBy:        *orderBy,
+		OrderDirection: *orderDirection,
+	}, nil
+}
+
+func buildEmployeeSearchInput(args []string) (repositoryemployee.SearchInput, error) {
+	flags := flag.NewFlagSet("employees", flag.ContinueOnError)
+	flags.SetOutput(io.Discard)
+
+	keyword := flags.String("keyword", "", "search keyword")
+	departmentID := flags.String("department-id", "", "department id")
+	positionID := flags.String("position-id", "", "position id")
+	employmentStatus := flags.String("employment-status", "", "employment status active, leave, or retired")
+	if err := flags.Parse(args); err != nil {
+		return repositoryemployee.SearchInput{}, err
+	}
+	if flags.NArg() != 0 {
+		return repositoryemployee.SearchInput{}, fmt.Errorf("unexpected argument %q", flags.Arg(0))
+	}
+	if err := validatePositiveInteger("department-id", *departmentID); err != nil {
+		return repositoryemployee.SearchInput{}, err
+	}
+	if err := validatePositiveInteger("position-id", *positionID); err != nil {
+		return repositoryemployee.SearchInput{}, err
+	}
+	if err := validateOneOf("employment-status", *employmentStatus, "active", "leave", "retired"); err != nil {
+		return repositoryemployee.SearchInput{}, err
+	}
+
+	return repositoryemployee.SearchInput{
+		Keyword:          *keyword,
+		DepartmentID:     *departmentID,
+		PositionID:       *positionID,
+		EmploymentStatus: *employmentStatus,
+	}, nil
+}
+
+func validateOneOf(name, value string, allowed ...string) error {
+	if value == "" {
+		return nil
+	}
+	for _, candidate := range allowed {
+		if value == candidate {
+			return nil
+		}
+	}
+	return fmt.Errorf("%s must be one of %v", name, allowed)
+}
+
+func validatePositiveInteger(name, value string) error {
+	if value == "" {
+		return nil
+	}
+	number, err := strconv.Atoi(value)
+	if err != nil || number <= 0 {
+		return fmt.Errorf("%s must be a positive integer", name)
+	}
+	return nil
 }
