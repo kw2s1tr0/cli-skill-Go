@@ -5,11 +5,13 @@ import (
 	repositorylogin "aiagentcliapp/repository/login"
 	repositorylogout "aiagentcliapp/repository/logout"
 	repositoryme "aiagentcliapp/repository/me"
+	repositoryposition "aiagentcliapp/repository/position"
 	repositorytokenstore "aiagentcliapp/repository/tokenstore"
 	servicelogin "aiagentcliapp/service/login"
 	inputbuilder "aiagentcliapp/service/login/input/builder"
 	servicelogout "aiagentcliapp/service/logout"
 	serviceme "aiagentcliapp/service/me"
+	serviceposition "aiagentcliapp/service/position"
 	"context"
 	"fmt"
 	"io"
@@ -118,6 +120,18 @@ func Run(
 	case "employees":
 
 	case "positions":
+		positionRepository := repositoryposition.NewRepository(client)
+		tokenStoreRepository := newTokenStoreRepository()
+		positionService := serviceposition.NewService(positionRepository, tokenStoreRepository)
+
+		positions, err := positionService.Positions(ctx)
+		if err != nil {
+			runtimeErr = err
+			break
+		}
+		for _, position := range positions {
+			fmt.Fprintf(stdout, "ID: %d\nName: %s\n", position.ID, position.Name)
+		}
 
 	default:
 		// 想定外commandの場合はエラー出力
