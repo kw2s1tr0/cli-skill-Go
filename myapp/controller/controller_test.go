@@ -257,6 +257,106 @@ func TestLogout(t *testing.T) {
 	}
 }
 
+func TestDepartments(t *testing.T) {
+	tokenStore := &fakeTokenStore{accessToken: "1|secret-token"}
+	originalNewTokenStoreRepository := newTokenStoreRepository
+	newTokenStoreRepository = func() accessTokenStore {
+		return tokenStore
+	}
+	defer func() {
+		newTokenStoreRepository = originalNewTokenStoreRepository
+	}()
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/api/departments" {
+			t.Errorf("path = %s, want /api/departments", request.URL.Path)
+		}
+		if authorization := request.Header.Get("Authorization"); authorization != "Bearer 1|secret-token" {
+			t.Errorf("Authorization = %q, want bearer token", authorization)
+		}
+		writer.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(writer).Encode([]map[string]any{
+			{"id": 1, "name": "Sales"},
+			{"id": 2, "name": "Engineering"},
+		})
+	}))
+	defer server.Close()
+
+	client := repository.NewClient(server.URL, server.Client())
+	var stdout, stderr bytes.Buffer
+	passwordReader := func(fd int) ([]byte, error) {
+		t.Fatal("ReadPassword() was called")
+		return nil, nil
+	}
+
+	code := Run(
+		[]string{"departments"},
+		client,
+		context.Background(),
+		os.Stdin,
+		&stdout,
+		&stderr,
+		passwordReader,
+	)
+
+	if code != ExitOK {
+		t.Fatalf("Run() = %d, want %d; stderr = %q", code, ExitOK, stderr.String())
+	}
+	if got := stdout.String(); got != "ID: 1\nName: Sales\nID: 2\nName: Engineering\n" {
+		t.Fatalf("stdout = %q, want departments output", got)
+	}
+	if got := stderr.String(); got != "" {
+		t.Fatalf("stderr = %q, want empty", got)
+	}
+}
+
+func TestDepartmentsReturnsAPIError(t *testing.T) {
+	tokenStore := &fakeTokenStore{accessToken: "1|secret-token"}
+	originalNewTokenStoreRepository := newTokenStoreRepository
+	newTokenStoreRepository = func() accessTokenStore {
+		return tokenStore
+	}
+	defer func() {
+		newTokenStoreRepository = originalNewTokenStoreRepository
+	}()
+
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/api/departments" {
+			t.Errorf("path = %s, want /api/departments", request.URL.Path)
+		}
+		writer.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(writer).Encode(map[string]string{"message": "server error"})
+	}))
+	defer server.Close()
+
+	client := repository.NewClient(server.URL, server.Client())
+	var stdout, stderr bytes.Buffer
+	passwordReader := func(fd int) ([]byte, error) {
+		t.Fatal("ReadPassword() was called")
+		return nil, nil
+	}
+
+	code := Run(
+		[]string{"departments"},
+		client,
+		context.Background(),
+		os.Stdin,
+		&stdout,
+		&stderr,
+		passwordReader,
+	)
+
+	if code != ExitRuntime {
+		t.Fatalf("Run() = %d, want %d", code, ExitRuntime)
+	}
+	if got := stdout.String(); got != "" {
+		t.Fatalf("stdout = %q, want empty", got)
+	}
+	if !strings.Contains(stderr.String(), "departments: departments: API returned 500 Internal Server Error: server error") {
+		t.Fatalf("stderr = %q, want departments API error", stderr.String())
+	}
+}
+
 func TestPositions(t *testing.T) {
 	tokenStore := &fakeTokenStore{accessToken: "1|secret-token"}
 	originalNewTokenStoreRepository := newTokenStoreRepository

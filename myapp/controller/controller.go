@@ -2,11 +2,13 @@ package controller
 
 import (
 	"aiagentcliapp/repository"
+	repositorydepartment "aiagentcliapp/repository/department"
 	repositorylogin "aiagentcliapp/repository/login"
 	repositorylogout "aiagentcliapp/repository/logout"
 	repositoryme "aiagentcliapp/repository/me"
 	repositoryposition "aiagentcliapp/repository/position"
 	repositorytokenstore "aiagentcliapp/repository/tokenstore"
+	servicedepartment "aiagentcliapp/service/department"
 	servicelogin "aiagentcliapp/service/login"
 	inputbuilder "aiagentcliapp/service/login/input/builder"
 	servicelogout "aiagentcliapp/service/logout"
@@ -116,6 +118,18 @@ func Run(
 		}
 
 	case "departments":
+		departmentRepository := repositorydepartment.NewRepository(client)
+		tokenStoreRepository := newTokenStoreRepository()
+		departmentService := servicedepartment.NewService(departmentRepository, tokenStoreRepository)
+
+		departments, err := departmentService.Departments(ctx)
+		if err != nil {
+			runtimeErr = err
+			break
+		}
+		for _, department := range departments {
+			fmt.Fprintf(stdout, "ID: %d\nName: %s\n", department.ID, department.Name)
+		}
 
 	case "employees":
 
